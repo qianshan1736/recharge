@@ -1,0 +1,879 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>地球Online补能计划</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@400;500;700;900&display=swap');
+        
+        body {
+            font-family: 'Noto Sans SC', sans-serif;
+            background-color: #FDFBF7;
+            color: #5D5750;
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        /* 隐藏滚动条 */
+        ::-webkit-scrollbar {
+            display: none;
+        }
+
+        .view-section {
+            display: none;
+            animation: fadeIn 0.5s ease-out forwards;
+        }
+        .view-section.active {
+            display: flex;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        @keyframes pulse-soft {
+            0%, 100% { transform: scale(1); opacity: 0.8; }
+            50% { transform: scale(1.05); opacity: 1; }
+        }
+
+        .animate-pulse-soft {
+            animation: pulse-soft 3s infinite ease-in-out;
+        }
+
+        .option-btn.selected {
+            background-color: #FFF4E0;
+            border-color: #FFD180;
+            color: #7A5B3E;
+        }
+        
+        .option-btn.selected .opt-letter {
+            background-color: #FFD180;
+            color: #7A5B3E;
+        }
+
+        /* 滚动选择器样式 */
+        .hide-scrollbar::-webkit-scrollbar { display: none; }
+        .hide-scrollbar { -ms-overflow-style: none; scrollbar-width: none; -webkit-overflow-scrolling: touch; }
+    </style>
+</head>
+<body class="min-h-screen flex flex-col items-center">
+
+    <!-- 主容器，限制最大宽度以适配移动端 -->
+    <div id="app" class="w-full max-w-md min-h-screen flex flex-col relative overflow-hidden">
+        
+        <!-- ================= 1. 首页 ================= -->
+        <section id="view-home" class="view-section active flex-col items-center px-8 py-20 min-h-screen">
+            <div class="bg-[#FFF4E0] p-6 rounded-full mb-8 animate-pulse-soft">
+                <i data-lucide="sparkles" class="w-12 h-12 text-[#E6A23C]"></i>
+            </div>
+            
+            <div class="text-center space-y-3 mb-10">
+                <h1 class="text-3xl font-black tracking-tight text-[#4A4540]">地球Online补能</h1>
+                <p class="text-[#8B847D] text-sm leading-relaxed">
+                    快来生成你的角色属性面板<br>
+                    测测你最近应该补充哪一种能量
+                </p>
+            </div>
+
+            <div class="w-full bg-white p-8 rounded-[40px] shadow-sm border border-[#F2EDE4] space-y-6">
+                <div class="space-y-4">
+                    <label class="text-sm font-bold text-[#A69F95] flex items-center gap-2">
+                        <i data-lucide="compass" class="w-4 h-4"></i> 初次地球Online游戏时间
+                    </label>
+                    <div id="btn-show-picker" class="w-full bg-[#FAF8F5] border border-transparent rounded-2xl p-5 text-sm outline-none transition-all text-[#A69F95] flex justify-between items-center cursor-pointer active:bg-[#F2EDE4]">
+                        <span id="picker-display-text" class="text-base font-medium">点击选择出生日期和时间</span>
+                        <i data-lucide="calendar" class="w-5 h-5 text-[#E6A23C]"></i>
+                    </div>
+                </div>
+                
+                <button id="btn-start" disabled class="w-full py-5 rounded-2xl font-bold text-lg transition-all transform active:scale-95 flex items-center justify-center gap-2 bg-[#E0DDD8] text-white cursor-not-allowed">
+                    开始测试 <i data-lucide="arrow-right" class="w-5 h-5"></i>
+                </button>
+            </div>
+        </section>
+
+        <!-- ================= 2. 测试页 ================= -->
+        <section id="view-test" class="view-section flex-col p-6 min-h-screen w-full">
+            <div class="w-full space-y-8 py-10 flex-1 flex flex-col">
+                <!-- 进度条 -->
+                <div class="space-y-2">
+                    <div class="flex justify-between text-xs text-[#A69F95] font-bold tracking-wider">
+                        <span id="progress-text">Step 1 of 12</span>
+                        <span id="progress-pct">8%</span>
+                    </div>
+                    <div class="h-2 w-full bg-[#F2EDE4] rounded-full overflow-hidden">
+                        <div id="progress-bar" class="h-full bg-[#FFD180] transition-all duration-500 ease-out" style="width: 8%"></div>
+                    </div>
+                </div>
+
+                <!-- 题目区域 -->
+                <div id="question-container" class="flex-1 animate-fadeIn">
+                    <!-- JS动态渲染 -->
+                </div>
+                
+                <!-- 多选题提交按钮 -->
+                <button id="btn-next-multi" class="hidden w-full py-4 rounded-2xl font-bold text-base transition-all transform active:scale-95 bg-[#FFD180] text-[#7A5B3E] shadow-lg shadow-orange-100 mt-4">
+                    确认选择 (最多3项)
+                </button>
+
+                <p class="text-center text-[#A69F95] text-xs mt-6">
+                    没有标准答案，选择最像你现在的状态就好
+                </p>
+            </div>
+        </section>
+
+        <!-- ================= 3. 加载页 ================= -->
+        <section id="view-loading" class="view-section flex-col items-center justify-center p-10 min-h-screen w-full">
+            <div class="w-full flex flex-col items-center text-center space-y-12">
+                <div class="relative flex items-center justify-center">
+                    <div class="w-32 h-32 rounded-full bg-[#FFF4E0] animate-ping opacity-30 absolute"></div>
+                    <div class="w-32 h-32 rounded-full bg-[#FFE0B2] flex items-center justify-center relative animate-pulse">
+                        <i data-lucide="heart" class="w-12 h-12 text-[#FFB74D] fill-[#FFB74D]"></i>
+                    </div>
+                </div>
+                <div class="space-y-4">
+                    <p id="loading-text" class="text-xl font-bold text-[#4A4540] transition-all duration-300">正在读取你的基础能量配置...</p>
+                    <div class="flex gap-2 justify-center">
+                        <div class="w-2 h-2 rounded-full bg-[#FFD180] animate-bounce" style="animation-delay: 0s"></div>
+                        <div class="w-2 h-2 rounded-full bg-[#FFD180] animate-bounce" style="animation-delay: 0.2s"></div>
+                        <div class="w-2 h-2 rounded-full bg-[#FFD180] animate-bounce" style="animation-delay: 0.4s"></div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- ================= 4. 结果页 ================= -->
+        <section id="view-result" class="view-section flex-col w-full pb-20 bg-[#FDFBF7]">
+            <!-- Header Hero -->
+            <div class="bg-[#FFF4E0] pt-16 pb-12 px-6 text-center rounded-b-[60px] relative overflow-hidden">
+                <div class="absolute top-4 left-4 text-[#FFD180]/30"><i data-lucide="zap" class="w-32 h-32"></i></div>
+                <h1 class="text-2xl font-black text-[#7A5B3E] relative z-10 mb-2">补能计划已生成</h1>
+                <p class="text-sm text-[#A69F95] relative z-10 font-medium">你不是不行，只是最近该补能了</p>
+            </div>
+
+            <div id="result-content" class="w-full px-6 -mt-8 space-y-8 relative z-20">
+                <!-- JS 动态渲染结果模块 -->
+            </div>
+
+            <!-- 重新测试 & 底部说明 -->
+            <div class="text-center space-y-6 pt-8 px-6">
+                <button onclick="location.reload()" class="flex items-center justify-center gap-2 mx-auto text-[#A69F95] text-sm font-bold active:scale-95 transition-transform hover:text-[#7A5B3E]">
+                    <i data-lucide="refresh-cw" class="w-4 h-4"></i> 重新测试
+                </button>
+                <div class="p-5 bg-[#FAF8F5] rounded-3xl text-[11px] text-[#A69F95] leading-relaxed text-left shadow-inner border border-[#F2EDE4]">
+                    <span class="font-bold">说明：</span>本测试中的八字与五行分析为轻量趣味简化版，用于心理参考与状态启发。五行“缺什么”不完全等于严肃命理上的“喜什么”，建议更偏向当前生活方式与情绪疗愈方向来理解。
+                </div>
+            </div>
+            
+            <!-- 悬浮分享按钮 -->
+            <div class="fixed bottom-6 right-6 z-50">
+                <button class="w-14 h-14 bg-[#FFD180] text-[#7A5B3E] rounded-full shadow-xl shadow-orange-200/50 flex items-center justify-center active:scale-90 transition-transform">
+                    <i data-lucide="share-2" class="w-6 h-6"></i>
+                </button>
+            </div>
+        </section>
+
+        <!-- ================= 日期时间滚动选择器 (Modal) ================= -->
+        <div id="date-picker-modal" class="fixed inset-0 bg-black/40 z-[100] hidden transition-opacity duration-300 opacity-0">
+            <div id="date-picker-sheet" class="bg-white rounded-t-[32px] w-full max-w-md mx-auto transform translate-y-full transition-transform duration-300 shadow-2xl absolute bottom-0 inset-x-0">
+                
+                <div class="flex justify-between items-center p-5 border-b border-[#F2EDE4]">
+                    <button id="dp-cancel" class="text-[#A69F95] font-medium active:scale-95 transition-transform px-2">取消</button>
+                    <div class="font-bold text-[#4A4540] text-lg">选择初次登录时间</div>
+                    <button id="dp-confirm" class="text-[#E6A23C] font-black active:scale-95 transition-transform px-2">确定</button>
+                </div>
+                
+                <div class="relative h-[200px] w-full bg-white px-4 py-2 flex items-center justify-center select-none">
+                    <!-- Highlight band -->
+                    <div class="absolute top-1/2 left-4 right-4 h-[40px] -translate-y-1/2 bg-[#FAF8F5] rounded-xl pointer-events-none z-0"></div>
+                    
+                    <!-- Gradient Mask -->
+                    <div class="absolute inset-x-0 top-0 h-[60px] bg-gradient-to-b from-white via-white/90 to-transparent pointer-events-none z-10 rounded-t-[32px]"></div>
+                    <div class="absolute inset-x-0 bottom-0 h-[60px] bg-gradient-to-t from-white via-white/90 to-transparent pointer-events-none z-10"></div>
+                    
+                    <!-- Columns Container -->
+                    <div class="w-full h-[200px] flex relative z-20">
+                        <div id="col-year" class="picker-col flex-[1.2] h-full overflow-y-auto snap-y snap-mandatory hide-scrollbar"></div>
+                        <div id="col-month" class="picker-col flex-1 h-full overflow-y-auto snap-y snap-mandatory hide-scrollbar"></div>
+                        <div id="col-day" class="picker-col flex-1 h-full overflow-y-auto snap-y snap-mandatory hide-scrollbar"></div>
+                        <div id="col-hour" class="picker-col flex-1 h-full overflow-y-auto snap-y snap-mandatory hide-scrollbar"></div>
+                        <div id="col-minute" class="picker-col flex-1 h-full overflow-y-auto snap-y snap-mandatory hide-scrollbar"></div>
+                    </div>
+                </div>
+                <div class="h-6 w-full bg-white"></div>
+            </div>
+        </div>
+
+    </div>
+
+    <!-- 核心逻辑与数据脚本 -->
+    <script>
+        /** --- 常量与数据源 --- */
+        const GAN = ["甲", "乙", "丙", "丁", "戊", "己", "庚", "辛", "壬", "癸"];
+        const ZHI = ["子", "丑", "寅", "卯", "辰", "巳", "午", "未", "申", "酉", "戌", "亥"];
+        const WUXING_MAP = {
+            "甲":"木", "乙":"木", "丙":"火", "丁":"火", "戊":"土", "己":"土", "庚":"金", "辛":"金", "壬":"水", "癸":"水",
+            "子":"水", "亥":"水", "寅":"木", "卯":"木", "巳":"火", "午":"火", "申":"金", "酉":"金", "辰":"土", "戌":"土", "丑":"土", "未":"土"
+        };
+        const WUXING_DESC = {
+            "金": "规则感、判断力、边界感、收束能力",
+            "木": "活力、行动力、生长感、舒展感",
+            "水": "放松能力、情绪流动、适应力、缓冲感",
+            "火": "热情、表达欲、感染力、开心劲",
+            "土": "稳定感、安全感、落地能力、承载力"
+        };
+        
+        // 核心规则：五行生克与身强身弱关系映射
+        // same = 生我(印) + 同我(比劫) ； diff = 克我(官杀) + 我克(财) + 我生(食伤)
+        const WX_REL = {
+            "金": { same: ["金", "土"], diff: ["火", "水", "木"] },
+            "木": { same: ["木", "水"], diff: ["金", "火", "土"] },
+            "水": { same: ["水", "金"], diff: ["土", "木", "火"] },
+            "火": { same: ["火", "木"], diff: ["水", "土", "金"] },
+            "土": { same: ["土", "火"], diff: ["木", "金", "水"] }
+        };
+
+        // 疯感模块各属性专属描述
+        const CRAZY_DESC = {
+            "金": "用绝对的控制或物理的破坏，斩断当下的烦躁与粘腻。",
+            "木": "去野外，去发泄，把枯萎的生命力重新折腾出来。",
+            "水": "潜入水底或黑夜，让紧绷的情绪毫无负担地流淌。",
+            "火": "把自己扔进高热量的声浪里，强行点燃自己。",
+            "土": "去最原始的地方打个滚，把悬着的心拽回地面。"
+        };
+
+        // 疯感与正经活动库
+        const ACTIVITIES = {
+            "金": { normal: ["整理收纳", "断舍离", "清单管理", "解谜"], crazy: ["砸盘子解压屋", "半夜抓娃娃扫货", "爽切冰块/果冻", "冷脸黑墨镜出街"] },
+            "木": { normal: ["公园散步", "徒步", "园艺", "骑行"], crazy: ["乡间乱窜徒步", "果园边摘边吃", "草地翻滚野餐", "花鸟市场瞎逛"] },
+            "水": { normal: ["游泳", "写日记", "听音乐", "看海/湖"], crazy: ["半夜海边发呆", "雨天踩水坑", "夜骑吃夜宵", "深夜KTV emo局"] },
+            "火": { normal: ["看脱口秀", "livehouse", "聚会", "唱K"], crazy: ["音乐节站区狂跳", "抽象Cosplay", "尖叫游乐场", "广场随机舞蹈"] },
+            "土": { normal: ["做饭烘焙", "逛菜市场", "力量训练"], crazy: ["田野玩泥巴", "农场挖红薯", "沙滩挖坑埋自己", "泥地障碍赛"] }
+        };
+
+        const QUESTIONS = [
+            { title: "最近一段时间，你早上醒来后的感觉更像哪一种？", options: [{ text: "明明睡了，但还是有点提不起劲", score: { 木: 2, 火: 1 } }, { text: "人醒了，脑子也醒了，但像开机就进入待办模式", score: { 金: 2, 土: 1 } }, { text: "醒来后不算特别累，但整个人有点发空", score: { 土: 2, 水: 1 } }, { text: "有时一醒来就开始想事情，身体还没醒", score: { 水: 2, 金: 1 } }] },
+            { title: "你最近的“电量消耗方式”更接近哪一种？", options: [{ text: "不是很忙，但就是感觉慢慢被耗掉了", score: { 木: 2, 土: 1 } }, { text: "事情一多就容易乱，脑子像同时开了很多页面", score: { 金: 2, 水: 1 } }, { text: "情绪起伏会直接影响我的精力", score: { 水: 2, 火: 1 } }, { text: "白天还好，一到晚上就突然想热闹一下", score: { 火: 2, 木: 1 } }] },
+            { title: "最近你的情绪更常停留在哪种状态？", options: [{ text: "有点闷，说不上难过，但也不太舒展", score: { 水: 2, 木: 1 } }, { text: "有点烦，容易被小事打断和消耗", score: { 金: 2, 火: 1 } }, { text: "还算平稳，但有一点点钝，不太容易开心", score: { 火: 2, 土: 1 } }, { text: "容易想很多，情绪像堵在心里流不出去", score: { 水: 2, 土: 1 } }] },
+            { title: "最近什么情况最容易让你觉得“有点撑不住了”？<br><span class='text-sm text-[#FFB74D]'>(多选，最多3项)</span>", isMulti: true, options: [{ text: "事情太多，脑子理不清", score: { 金: 2 } }, { text: "一直在做事，但整个人提不起劲", score: { 木: 2 } }, { text: "明明没发生大事，但就是很想躲起来", score: { 水: 2 } }, { text: "没什么让人兴奋的事，日子有点淡", score: { 火: 2 } }, { text: "想很多现实问题，心里总觉得不踏实", score: { 土: 2 } }] },
+            { title: "你最近工作时最常见的卡点是？", options: [{ text: "要做的事情不少，但总感觉推进不起来", score: { 木: 2, 土: 1 } }, { text: "很容易被打断，节奏一乱就更烦", score: { 金: 2, 土: 1 } }, { text: "做着做着就有点疲，想停一下缓口气", score: { 水: 2, 木: 1 } }, { text: "能完成，但少了点投入感和成就感", score: { 火: 2, 土: 1 } }] },
+            { title: "最近面对待办事项时，你更像哪种状态？", options: [{ text: "会列很多，但越列越有压力", score: { 金: 2, 土: 1 } }, { text: "知道该做什么，但启动总有点慢", score: { 木: 2 } }, { text: "一忙起来就不太顾得上自己的感受", score: { 水: 2 } }, { text: "像在完成任务，少了点热情", score: { 火: 2 } }] },
+            { title: "最近你最希望工作里立刻发生哪种变化？", options: [{ text: "事情少一点，脑子清楚一点", score: { 金: 2 } }, { text: "自己更有行动力一点，不要总拖着", score: { 木: 2 } }, { text: "能喘口气，别总那么紧", score: { 水: 2 } }, { text: "有点成就感，或者一点新鲜感", score: { 火: 2 } }, { text: "节奏稳定一点，心里踏实一点", score: { 土: 2 } }] },
+            { title: "最近你对社交的感觉更接近哪一种？", options: [{ text: "不太想高强度社交，但想有人陪着", score: { 水: 2, 土: 1 } }, { text: "不太想说话，能不社交就尽量不社交", score: { 木: 2, 水: 1 } }, { text: "想出去见见人，让自己活过来一点", score: { 火: 2 } }, { text: "社交没问题，但特别需要自己的边界", score: { 金: 2 } }] },
+            { title: "如果周末突然空出来半天，你最想做什么？<br><span class='text-sm text-[#FFB74D]'>(多选，最多3项)</span>", isMulti: true, options: [{ text: "收拾房间、整理东西、清清脑子", score: { 金: 2 } }, { text: "去公园、去有树有风的地方走走", score: { 木: 2 } }, { text: "去海边/咖啡馆安静待一会儿", score: { 水: 2 } }, { text: "去见朋友、逛街、看演出找热闹", score: { 火: 2 } }, { text: "去菜市场、做饭、过具体的生活", score: { 土: 2 } }] },
+            { title: "最近你的身体感受更像哪一种？", options: [{ text: "肩颈紧、脑子也紧，不容易真正放松", score: { 水: 2, 金: 1 } }, { text: "没什么大问题，但整个人偏疲、偏蔫", score: { 木: 2, 土: 1 } }, { text: "感觉身体里少了点热度和兴奋感", score: { 火: 2 } }, { text: "有种“脚不太沾地”的感觉，不够稳", score: { 土: 2, 水: 1 } }] },
+            { title: "最近你最想给身体补的感觉是什么？", options: [{ text: "清爽一点，利落一点，不要那么乱", score: { 金: 2 } }, { text: "轻快一点，舒展开一点", score: { 木: 2 } }, { text: "松一点，慢一点，缓一缓", score: { 水: 2 } }, { text: "热一点，亮一点，有精神一点", score: { 火: 2 } }, { text: "稳一点，实一点，踏实一点", score: { 土: 2 } }] },
+            { title: "如果用一句话形容你最近的状态，你更想选哪一句？", options: [{ text: "我不是不努力，我是脑子有点太满了", score: { 金: 2, 水: 1 } }, { text: "我不是不想动，我是整个人有点蔫", score: { 木: 2, 土: 1 } }, { text: "我不是想逃避，我只是最近真的有点紧", score: { 水: 2, 土: 1 } }, { text: "我不是没在生活，我只是最近不太亮", score: { 火: 2 } }, { text: "我不是没想法，我只是有点飘，落不下来", score: { 土: 2, 水: 1 } }] }
+        ];
+
+        const COMBOS = {
+            "金木": { label: "想推进但脑子打结型", desc: "想做事、但乱、卡、推进不顺。你需要先理顺，再启动。" },
+            "金水": { label: "脑内过载型", desc: "脑子满、情绪也满、紧绷。你需要先减噪，再松下来。" },
+            "金火": { label: "一边烦一边想找出口型", desc: "热情被现实的烦乱压住了。你需要先把混乱理开，再释放热度。" },
+            "金土": { label: "硬撑秩序型", desc: "想稳住、责任重、越撑越紧。你需要减压，稳得更轻一点。" },
+            "木金": { label: "卡在启动前型", desc: "有想法，但被混乱拖住。你需要清一清脑子，再把身体带起来。" },
+            "木水": { label: "低电量缓冲型", desc: "蔫、累、想休息。你需要休息、舒展、慢慢回电。" },
+            "木火": { label: "低电量待点亮型", desc: "没劲、没热情。你需要先把状态养活，再把自己点亮。" },
+            "木土": { label: "想重启但身体跟不上型", desc: "想变好、但人有点虚。你需要先养稳自己，再慢慢启动。" },
+            "水金": { label: "想太多紧绷型", desc: "思绪重、放不松。你需要先松下来，再慢慢理清。" },
+            "水木": { label: "慢慢耗空型", desc: "被日常持续消耗、想恢复生机。你需要温和回电，慢慢长回来。" },
+            "水火": { label: "情绪起伏型", desc: "想表达、也想被安抚。你需要给自己情绪一个顺畅的出口。" },
+            "水土": { label: "漂浮失重型", desc: "累、虚、悬着。你需要稳定下来，也慢下来被现实接住。" },
+            "火金": { label: "想释放但被压住型", desc: "想热起来、但被规矩卡住。你需要更顺畅地释放，不要太克制。" },
+            "火木": { label: "想活过来型", desc: "需要活力、热度、重新启动。你需要把活力和热情一起养回来。" },
+            "火水": { label: "想发泄也想被安抚型", desc: "情绪多、想说、也想顺下来。你需要释放，也需要被安顿。" },
+            "火土": { label: "想被点亮也想被接住型", desc: "想开心，也想安心。你需要一点热度，也一点安稳。" },
+            "土金": { label: "稳着稳着有点累型", desc: "表面稳定、责任感重、内里紧。你需要把压力放下一点点。" },
+            "土木": { label: "想恢复但不敢乱动型", desc: "想重启、但先想站稳。你需要先稳住，再慢慢恢复。" },
+            "土水": { label: "外表稳定但内里发虚型", desc: "想慢下来、也想踏实下来。你需要让身体和情绪都被接住。" },
+            "土火": { label: "想暖起来但怕更累型", desc: "既想热闹，也需要被稳稳托住。你需要稳稳地回暖。" }
+        };
+
+        /** --- 状态管理 --- */
+        let state = {
+            birthData: { date: '', time: '' },
+            currentQ: 0,
+            scores: { 金: 0, 木: 0, 水: 0, 火: 0, 土: 0 },
+            multiSelected: []
+        };
+
+        /** --- 页面切换逻辑 --- */
+        const views = {
+            home: document.getElementById('view-home'),
+            test: document.getElementById('view-test'),
+            loading: document.getElementById('view-loading'),
+            result: document.getElementById('view-result')
+        };
+
+        function switchView(viewName) {
+            Object.values(views).forEach(el => el.classList.remove('active'));
+            views[viewName].classList.add('active');
+            lucide.createIcons();
+            window.scrollTo(0,0);
+        }
+
+        /** --- 1. 首页逻辑 & 滚动选择器 --- */
+        const btnStart = document.getElementById('btn-start');
+
+        function checkInputs() {
+            if (state.birthData.date && state.birthData.time) {
+                btnStart.disabled = false;
+                btnStart.classList.replace('bg-[#E0DDD8]', 'bg-[#FFD180]');
+                btnStart.classList.replace('text-white', 'text-[#7A5B3E]');
+                btnStart.classList.add('shadow-lg', 'shadow-orange-100');
+            } else {
+                btnStart.disabled = true;
+                btnStart.classList.replace('bg-[#FFD180]', 'bg-[#E0DDD8]');
+                btnStart.classList.replace('text-[#7A5B3E]', 'text-white');
+                btnStart.classList.remove('shadow-lg', 'shadow-orange-100');
+            }
+        }
+        
+        btnStart.addEventListener('click', () => {
+            switchView('test');
+            renderQuestion();
+        });
+
+        // ================= 滚动选择器逻辑 =================
+        const ITEM_HEIGHT = 40;
+        const dateModal = document.getElementById('date-picker-modal');
+        const dateSheet = document.getElementById('date-picker-sheet');
+        const btnShowPicker = document.getElementById('btn-show-picker');
+        const displayTxt = document.getElementById('picker-display-text');
+        let isPickerInit = false;
+
+        function initColumn(colId, start, end, suffix, defaultValue) {
+            const col = document.getElementById(colId);
+            col.innerHTML = '';
+            
+            // 顶层留白
+            const padTop = document.createElement('div');
+            padTop.className = 'w-full shrink-0 h-[80px] pointer-events-none';
+            col.appendChild(padTop);
+            
+            for (let i = start; i <= end; i++) {
+                const div = document.createElement('div');
+                div.className = 'picker-item h-[40px] w-full flex items-center justify-center text-[#A69F95] transition-all snap-center shrink-0 cursor-pointer select-none';
+                div.dataset.value = i;
+                const valStr = start > 999 ? i.toString() : i.toString().padStart(2, '0');
+                div.innerHTML = `<span class="val-text font-medium text-[15px] transition-all">${valStr}</span><span class="text-[10px] ml-1 opacity-60">${suffix}</span>`;
+                col.appendChild(div);
+            }
+            
+            // 底层留白
+            const padBottom = document.createElement('div');
+            padBottom.className = 'w-full shrink-0 h-[80px] pointer-events-none';
+            col.appendChild(padBottom);
+            
+            col.dataset.value = defaultValue;
+            
+            // 初始化滚动位置
+            setTimeout(() => {
+                const index = defaultValue - start;
+                col.scrollTop = index * ITEM_HEIGHT;
+                updateColumnStyle(col);
+            }, 10);
+        }
+
+        function updateColumnStyle(col) {
+            const index = Math.round(col.scrollTop / ITEM_HEIGHT);
+            const items = col.querySelectorAll('.picker-item');
+            items.forEach((item, i) => {
+                const valText = item.querySelector('.val-text');
+                if (i === index) {
+                    valText.classList.add('text-[18px]', 'text-[#4A4540]', 'font-black');
+                    valText.classList.remove('text-[15px]', 'text-[#A69F95]', 'font-medium');
+                    item.classList.add('scale-105');
+                    col.dataset.value = item.dataset.value;
+                } else {
+                    valText.classList.remove('text-[18px]', 'text-[#4A4540]', 'font-black');
+                    valText.classList.add('text-[15px]', 'text-[#A69F95]', 'font-medium');
+                    item.classList.remove('scale-105');
+                }
+            });
+        }
+
+        // 月份或年份变化时，动态更新该月天数（防抖）
+        function updateDays() {
+            const year = parseInt(document.getElementById('col-year').dataset.value);
+            const month = parseInt(document.getElementById('col-month').dataset.value);
+            if (!year || !month) return;
+            
+            const daysInMonth = new Date(year, month, 0).getDate();
+            const dayCol = document.getElementById('col-day');
+            const currentCount = dayCol.querySelectorAll('.picker-item').length;
+            
+            if (daysInMonth !== currentCount) {
+                let currentDay = parseInt(dayCol.dataset.value || 1);
+                if (currentDay > daysInMonth) currentDay = daysInMonth; // 修正比如 2月30日 的情况
+                initColumn('col-day', 1, daysInMonth, '日', currentDay);
+            }
+        }
+
+        // 为各列绑定事件
+        ['col-year', 'col-month', 'col-day', 'col-hour', 'col-minute'].forEach(colId => {
+            const col = document.getElementById(colId);
+            
+            // 滚动高亮
+            col.addEventListener('scroll', () => {
+                updateColumnStyle(col);
+                if (colId === 'col-year' || colId === 'col-month') {
+                    clearTimeout(col.scrollTimeout);
+                    col.scrollTimeout = setTimeout(updateDays, 100);
+                }
+            });
+            
+            // 点击居中
+            col.addEventListener('click', (e) => {
+                const item = e.target.closest('.picker-item');
+                if (item) {
+                    const index = Array.from(col.querySelectorAll('.picker-item')).indexOf(item);
+                    col.scrollTo({ top: index * ITEM_HEIGHT, behavior: 'smooth' });
+                }
+            });
+        });
+
+        btnShowPicker.addEventListener('click', () => {
+            if (!isPickerInit) {
+                const now = new Date();
+                const defaultYear = now.getFullYear() - 25; // 默认选中25岁
+                initColumn('col-year', 1950, now.getFullYear(), '年', defaultYear);
+                initColumn('col-month', 1, 12, '月', now.getMonth() + 1);
+                initColumn('col-day', 1, new Date(defaultYear, now.getMonth() + 1, 0).getDate(), '日', now.getDate());
+                initColumn('col-hour', 0, 23, '时', now.getHours());
+                initColumn('col-minute', 0, 59, '分', now.getMinutes());
+                isPickerInit = true;
+            }
+            dateModal.classList.remove('hidden');
+            void dateModal.offsetWidth; // 触发重绘
+            dateModal.classList.add('opacity-100');
+            dateSheet.classList.remove('translate-y-full');
+        });
+
+        function closePicker() {
+            dateModal.classList.remove('opacity-100');
+            dateSheet.classList.add('translate-y-full');
+            setTimeout(() => { dateModal.classList.add('hidden'); }, 300);
+        }
+
+        document.getElementById('dp-cancel').addEventListener('click', closePicker);
+        dateModal.addEventListener('click', (e) => { if(e.target === dateModal) closePicker(); });
+
+        document.getElementById('dp-confirm').addEventListener('click', () => {
+            const y = document.getElementById('col-year').dataset.value;
+            const m = document.getElementById('col-month').dataset.value.padStart(2, '0');
+            const d = document.getElementById('col-day').dataset.value.padStart(2, '0');
+            const h = document.getElementById('col-hour').dataset.value.padStart(2, '0');
+            const min = document.getElementById('col-minute').dataset.value.padStart(2, '0');
+            
+            state.birthData.date = `${y}-${m}-${d}`;
+            state.birthData.time = `${h}:${min}`;
+            
+            displayTxt.innerHTML = `<span class="text-[#4A4540] font-black">${y}</span>年 <span class="text-[#4A4540] font-black">${m}</span>月 <span class="text-[#4A4540] font-black">${d}</span>日 <span class="text-[#4A4540] font-black ml-2">${h}:${min}</span>`;
+            btnShowPicker.classList.replace('bg-[#FAF8F5]', 'bg-[#FFF4E0]');
+            btnShowPicker.classList.add('border-[#FFE0B2]');
+            
+            checkInputs();
+            closePicker();
+        });
+
+        /** --- 2. 测试逻辑 --- */
+        const questionContainer = document.getElementById('question-container');
+        const progressPct = document.getElementById('progress-pct');
+        const progressText = document.getElementById('progress-text');
+        const progressBar = document.getElementById('progress-bar');
+        const btnNextMulti = document.getElementById('btn-next-multi');
+
+        function renderQuestion() {
+            const q = QUESTIONS[state.currentQ];
+            state.multiSelected = []; // 重置多选状态
+
+            // 更新进度
+            const pct = Math.round(((state.currentQ + 1) / QUESTIONS.length) * 100);
+            progressText.innerText = `Step ${state.currentQ + 1} of ${QUESTIONS.length}`;
+            progressPct.innerText = `${pct}%`;
+            progressBar.style.width = `${pct}%`;
+
+            let optionsHtml = q.options.map((opt, idx) => `
+                <button onclick="handleOptionClick(${idx})" id="opt-${idx}" class="option-btn w-full text-left p-5 rounded-3xl bg-white border border-[#F2EDE4] transition-all active:scale-95 flex items-center gap-4 group mb-4 shadow-sm">
+                    <span class="opt-letter w-8 h-8 shrink-0 rounded-full bg-[#FAF8F5] flex items-center justify-center text-sm font-black text-[#A69F95] transition-colors">
+                        ${String.fromCharCode(65 + idx)}
+                    </span>
+                    <span class="flex-1 text-sm font-bold leading-relaxed text-[#5D5750]">${opt.text}</span>
+                </button>
+            `).join('');
+
+            questionContainer.innerHTML = `
+                <h2 class="text-2xl font-black text-[#4A4540] mb-8 leading-snug">${q.title}</h2>
+                <div>${optionsHtml}</div>
+            `;
+
+            if (q.isMulti) {
+                btnNextMulti.classList.remove('hidden');
+                btnNextMulti.style.opacity = '0.5';
+                btnNextMulti.disabled = true;
+            } else {
+                btnNextMulti.classList.add('hidden');
+            }
+        }
+
+        window.handleOptionClick = function(idx) {
+            const q = QUESTIONS[state.currentQ];
+            
+            if (q.isMulti) {
+                const btnEl = document.getElementById(`opt-${idx}`);
+                const pos = state.multiSelected.indexOf(idx);
+                
+                if (pos > -1) {
+                    state.multiSelected.splice(pos, 1);
+                    btnEl.classList.remove('selected');
+                } else {
+                    if (state.multiSelected.length < 3) {
+                        state.multiSelected.push(idx);
+                        btnEl.classList.add('selected');
+                    } else {
+                        // 超过3项反馈抖动
+                        btnEl.style.transform = 'translateX(5px)';
+                        setTimeout(() => btnEl.style.transform = 'none', 100);
+                    }
+                }
+                
+                if (state.multiSelected.length > 0) {
+                    btnNextMulti.style.opacity = '1';
+                    btnNextMulti.disabled = false;
+                } else {
+                    btnNextMulti.style.opacity = '0.5';
+                    btnNextMulti.disabled = true;
+                }
+
+            } else {
+                // 单选直接进入下一题
+                document.getElementById(`opt-${idx}`).classList.add('selected');
+                addScore(q.options[idx].score);
+                setTimeout(goNext, 300);
+            }
+        };
+
+        btnNextMulti.addEventListener('click', () => {
+            const q = QUESTIONS[state.currentQ];
+            state.multiSelected.forEach(idx => addScore(q.options[idx].score));
+            goNext();
+        });
+
+        function addScore(scoreObj) {
+            Object.keys(scoreObj).forEach(k => { state.scores[k] += scoreObj[k]; });
+        }
+
+        function goNext() {
+            if (state.currentQ < QUESTIONS.length - 1) {
+                state.currentQ++;
+                // 添加淡出淡入效果
+                questionContainer.style.opacity = 0;
+                setTimeout(() => {
+                    renderQuestion();
+                    questionContainer.style.opacity = 1;
+                }, 200);
+            } else {
+                startLoading();
+            }
+        }
+
+        /** --- 3. 加载逻辑 --- */
+        const loadingText = document.getElementById('loading-text');
+        function startLoading() {
+            switchView('loading');
+            const texts = [
+                "正在读取你的基础能量配置...",
+                "正在分析你最近的状态波动...",
+                "正在为你调配更适合你的补给包...",
+                "快好了，马上把这份补能计划交给你"
+            ];
+            let i = 0;
+            const interval = setInterval(() => {
+                i++;
+                if (i >= texts.length) {
+                    clearInterval(interval);
+                    renderResult();
+                    switchView('result');
+                } else {
+                    loadingText.style.opacity = 0;
+                    setTimeout(() => {
+                        loadingText.innerText = texts[i];
+                        loadingText.style.opacity = 1;
+                    }, 300);
+                }
+            }, 1500);
+        }
+
+        /** --- 4. 结果计算与渲染 --- */
+        function getBazi(dateStr, timeStr) {
+            const inputDate = new Date(`${dateStr}T${timeStr}`);
+            const year = inputDate.getFullYear();
+            const month = inputDate.getMonth() + 1;
+            const day = inputDate.getDate();
+            const hour = inputDate.getHours();
+
+            // --- 1. 日柱与时柱 (考虑23点后子时换日) ---
+            let utcDate = new Date(Date.UTC(year, month - 1, day));
+            if (hour >= 23) {
+                utcDate.setUTCDate(utcDate.getUTCDate() + 1); // 23点以后算作第二天的日柱
+            }
+            
+            // 采用 1900-01-01 作为基准日，该日为 甲戌日 (天干:0, 地支:10)
+            const baseDate = Date.UTC(1900, 0, 1);
+            const offsetDays = Math.floor((utcDate.getTime() - baseDate) / (24 * 3600 * 1000));
+            
+            const dayGanIndex = ((offsetDays % 10) + 10) % 10;
+            const dayZhiIndex = ((offsetDays + 10) % 12 + 12) % 12;
+            const dayGan = GAN[dayGanIndex];
+            const dayZhi = ZHI[dayZhiIndex];
+
+            // 时柱 (五鼠遁)
+            const hourZhiIndex = Math.floor((hour + 1) / 2) % 12;
+            const hourGanIndex = ((dayGanIndex % 5) * 2 + hourZhiIndex) % 10;
+            const hourGan = GAN[hourGanIndex];
+            const hourZhi = ZHI[hourZhiIndex];
+
+            // --- 2. 年柱与月柱 (简易节气判定) ---
+            // 近似节气日: 小寒,立春,惊蛰,清明,立夏,芒种,小暑,立秋,白露,寒露,立冬,大雪
+            const termDays = [6, 4, 6, 5, 6, 6, 7, 8, 8, 8, 8, 7];
+            let baziYear = year;
+            let baziMonthIdx; // 0=寅月, 1=卯月 ... 11=丑月
+            
+            if (day >= termDays[month - 1]) {
+                // 已过本月节气
+                const mapped = [11, 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10]; // 1月小寒后为丑(11), 2月立春后为寅(0)
+                baziMonthIdx = mapped[month - 1];
+                if (month === 1) baziYear = year - 1; // 1月即使过了小寒，在立春前仍属上一年
+            } else {
+                // 未过本月节气，算上个月
+                const mappedPrev = [10, 11, 0, 1, 2, 3, 4, 5, 6, 7, 8, 9]; // 1月小寒前为子(10)
+                baziMonthIdx = mappedPrev[month - 1];
+                if (month === 1 || month === 2) baziYear = year - 1; // 1月小寒前、2月立春前均属上一年
+            }
+
+            const yearIndex = (baziYear - 1984 + 6000) % 60;
+            const yearGanIndex = yearIndex % 10;
+            const yearGan = GAN[yearGanIndex];
+            const yearZhi = ZHI[yearIndex % 12];
+
+            // 月柱 (五虎遁)
+            const monthGanIndex = ((yearGanIndex % 5) * 2 + 2 + baziMonthIdx) % 10;
+            const monthGan = GAN[monthGanIndex];
+            const monthZhi = ZHI[(baziMonthIdx + 2) % 12]; // 寅是ZHI[2]
+
+            return [
+                { name: '年柱', value: yearGan + yearZhi },
+                { name: '月柱', value: monthGan + monthZhi },
+                { name: '日柱', value: dayGan + dayZhi },
+                { name: '时柱', value: hourGan + hourZhi }
+            ];
+        }
+
+        function renderResult() {
+            // 1. 八字与先天计算
+            const bazi = getBazi(state.birthData.date, state.birthData.time);
+            const longTermCount = { 金: 0, 木: 0, 水: 0, 火: 0, 土: 0 };
+            const wxScores = { 金: 0, 木: 0, 水: 0, 火: 0, 土: 0 }; // 用于强弱打分
+            
+            bazi.forEach((p, idx) => {
+                const ganWx = WUXING_MAP[p.value[0]];
+                const zhiWx = WUXING_MAP[p.value[1]];
+                
+                longTermCount[ganWx]++;
+                longTermCount[zhiWx]++;
+                
+                // 日干不计入身强衰的打分对比
+                if (idx !== 2) wxScores[ganWx] += 1; 
+                // 月令(支)权重最高，设为2.5，其余地支为1
+                const zhiWeight = (idx === 1) ? 2.5 : 1; 
+                wxScores[zhiWx] += zhiWeight;
+            });
+            
+            // 日主身强身弱判断 (核心规则升级)
+            const dayGan = bazi[2].value[0];
+            const dayWx = WUXING_MAP[dayGan];
+            const rel = WX_REL[dayWx];
+            
+            let sameScore = 0, diffScore = 0;
+            rel.same.forEach(wx => sameScore += wxScores[wx]);
+            rel.diff.forEach(wx => diffScore += wxScores[wx]);
+            
+            const isStrong = sameScore > diffScore;
+            
+            // 确定喜用神 (候选数组按原局得分从小到大排序，挑选最弱的1~2个喜用神)
+            let candidates = isStrong ? [...rel.diff] : [...rel.same];
+            candidates.sort((a, b) => wxScores[a] - wxScores[b]);
+            const weakItems = candidates.slice(0, 2); 
+            
+            // 2. 当前状态计算
+            const sortedScores = Object.entries(state.scores).sort((a, b) => b[1] - a[1]);
+            
+            // 动态计算急需补能的 1~3 种属性 (严格根据分差规则)
+            const topElements = [sortedScores[0][0]];
+            if (sortedScores[1][1] > 0 && sortedScores[0][1] - sortedScores[1][1] <= 2) {
+                topElements.push(sortedScores[1][0]);
+                if (sortedScores[2][1] > 0 && sortedScores[0][1] - sortedScores[2][1] <= 3) {
+                    topElements.push(sortedScores[2][0]);
+                }
+            }
+
+            // 状态标签文案仅基于有效入选的属性
+            const top1 = topElements[0];
+            const top2 = topElements.length > 1 ? topElements[1] : null;
+            const comboKey = top2 ? top1 + top2 : top1;
+            
+            // 补充单属性(分差较大时的)基础标签
+            const SINGLE_COMBOS = {
+                "金": { label: "脑子有点太满型", desc: "脑子很满，需要收束与边界感。你需要先减噪，再松下来。" },
+                "木": { label: "轻度枯电型", desc: "行动力和生机偏低，有点蔫。你需要温和回电，慢慢恢复生机。" },
+                "水": { label: "需要缓冲型", desc: "情绪有些积累，不容易放松。你需要给自己一个缓冲、流动的出口。" },
+                "火": { label: "热情掉线型", desc: "生活缺少一点兴奋感和热度。你需要重新找到点亮自己的事物。" },
+                "土": { label: "落地感不足型", desc: "有点飘，不够安稳。你需要落地，被现实稳稳接住。" }
+            };
+
+            const statusInfo = COMBOS[comboKey] || SINGLE_COMBOS[comboKey] || { label: `${top1}能量偏重型`, desc: `近期最需要补足 ${top1} 属性的能量。` };
+
+            // 3. 构建结果HTML
+            const baziHtml = bazi.map(p => `
+                <div class="bg-[#FAF8F5] p-3 rounded-2xl text-center border border-[#F2EDE4]">
+                    <div class="text-[10px] text-[#A69F95] mb-1 font-bold">${p.name}</div>
+                    <div class="text-xl font-black text-[#4A4540] tracking-widest">${p.value}</div>
+                </div>
+            `).join('');
+
+            const wuxingStatsHtml = Object.keys(longTermCount).map(k => `
+                <div class="text-center space-y-2">
+                    <div class="w-full h-12 rounded-xl flex items-center justify-center text-lg font-black ${longTermCount[k] > 0 ? 'bg-[#FFF9F0] text-[#E6A23C] border border-[#FFE0B2]' : 'bg-[#FAF8F5] text-[#D1CDCA]'}">
+                        ${longTermCount[k]}
+                    </div>
+                    <div class="text-[11px] font-bold text-[#A69F95]">${k}</div>
+                </div>
+            `).join('');
+
+            const weakAnalysis = `你的日元为 <span class="font-bold text-[#7A5B3E]">${dayGan}(${dayWx})</span>，整体格局偏 <span class="font-bold text-[#E6A23C]">${isStrong ? '身强' : '身弱'}</span>`;
+            const weakDesc = `<br>根据命理喜用神原则，你长期最需要补充 <span class="font-black text-[#7A5B3E]">${weakItems.join(' 与 ')}</span> 属性，<br>即底层需要加强：<span class="italic text-[#7A5B3E]">${weakItems.map(w=>WUXING_DESC[w].split('、')[0]).join('、')}</span> 的支撑感。`;
+
+            // 长期建议
+            const recLongTerm = weakItems.length > 0 ? weakItems.slice(0,2) : [top1];
+            const longTermHtml = recLongTerm.map(item => `
+                <div class="bg-white p-5 rounded-[30px] border border-[#F2EDE4] flex items-start gap-4 shadow-sm mb-3">
+                    <div class="w-12 h-12 bg-[#FDFBF7] rounded-2xl text-[#E6A23C] flex items-center justify-center shrink-0 border border-[#F2EDE4]">
+                        <span class="font-black text-lg">${item}</span>
+                    </div>
+                    <div>
+                        <div class="font-bold text-[#4A4540] mb-2 text-sm">长期补 [${item}] 活动建议</div>
+                        <div class="flex flex-wrap gap-2">
+                            ${ACTIVITIES[item].normal.map(act => `<span class="text-[11px] px-2.5 py-1 bg-[#FAF8F5] text-[#7A5B3E] font-medium rounded-lg border border-[#F2EDE4]">${act}</span>`).join('')}
+                        </div>
+                    </div>
+                </div>
+            `).join('');
+
+            // 疯感建议 (分类列表渲染)
+            const crazyHtml = topElements.map(el => `
+                <div class="mb-8 last:mb-0 relative z-10">
+                    <div class="mb-4">
+                        <div class="flex items-center gap-2 mb-1">
+                            <div class="w-6 h-6 rounded-full bg-[#FFD180] text-[#5D5750] flex items-center justify-center font-black text-[13px]">${el}</div>
+                            <span class="text-[15px] font-black text-[#FFD180] tracking-wide">补${el}指南</span>
+                        </div>
+                        <div class="text-[11px] text-white/70 leading-relaxed font-medium pl-8">${CRAZY_DESC[el]}</div>
+                    </div>
+                    <div class="space-y-2.5">
+                        ${ACTIVITIES[el].crazy.map((act, i) => `
+                            <div class="bg-white/10 p-3.5 rounded-2xl flex items-center gap-3 active:bg-white/20 transition-colors">
+                                <span class="text-[#FFD180] font-black text-[15px] opacity-70 w-5 text-right shrink-0">${i + 1}.</span>
+                                <span class="font-bold text-[13px] text-white/95">${act}</span>
+                            </div>
+                        `).join('')}
+                    </div>
+                </div>
+            `).join('');
+
+            const resultContent = document.getElementById('result-content');
+            resultContent.innerHTML = `
+                <!-- 模块1：人物面板 -->
+                <div class="bg-white rounded-[40px] p-8 shadow-sm border border-[#F2EDE4]">
+                    <div class="flex items-center gap-2 mb-6 text-[#7A5B3E] font-bold">
+                        <i data-lucide="compass" class="w-5 h-5"></i> <span>地球Online 人物面板</span>
+                    </div>
+                    <div class="grid grid-cols-4 gap-2 mb-8">
+                        ${baziHtml}
+                    </div>
+                    <div class="space-y-4">
+                        <div class="text-xs font-bold text-[#A69F95]">先天能量分布</div>
+                        <div class="grid grid-cols-5 gap-2">
+                            ${wuxingStatsHtml}
+                        </div>
+                        <div class="bg-[#FDFBF7] p-5 rounded-2xl border border-dashed border-[#E0DDD8] mt-4">
+                            <p class="text-xs leading-relaxed text-[#8B847D]">
+                                <span class="font-bold text-[#E6A23C]">先天分析：</span>
+                                你的五行${weakAnalysis}。${weakDesc}
+                            </p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 模块2：长期建议 -->
+                <div class="space-y-4">
+                    <h3 class="text-sm font-bold text-[#A69F95] px-2 flex items-center gap-2">
+                        <i data-lucide="refresh-cw" class="w-4 h-4"></i> 长期养成方向
+                    </h3>
+                    ${longTermHtml}
+                </div>
+
+                <!-- 模块3：当前状态 -->
+                <div class="bg-[#FFF9F0] rounded-[40px] p-8 border border-[#FFE0B2] shadow-sm relative overflow-hidden">
+                    <div class="absolute top-0 right-0 p-4 opacity-20"><i data-lucide="activity" class="w-20 h-20 text-[#E6A23C]"></i></div>
+                    <div class="flex items-center gap-2 text-[#7A5B3E] font-bold mb-6 relative z-10">
+                        <i data-lucide="zap" class="w-5 h-5 fill-current"></i> <span>当前状态诊断</span>
+                    </div>
+                    <div class="space-y-5 text-center relative z-10">
+                        <div class="inline-block px-5 py-2.5 bg-white rounded-full text-[#FFB74D] font-black text-sm shadow-sm border border-[#FFE0B2]">
+                            # ${statusInfo.label}
+                        </div>
+                        <p class="text-lg font-black text-[#4A4540] leading-relaxed">
+                            “${statusInfo.desc}”
+                        </p>
+                        <p class="text-xs text-[#8B847D] leading-relaxed px-2 bg-white/50 py-3 rounded-xl border border-[#FFE0B2]/50">
+                            你最近急需补足 <span class="font-black text-[#E6A23C] text-[14px]">${topElements.join(' + ')}</span> 能量。<br>这并不是由于你不够努力，而是你在这部分的“系统支持感”暂时告罄了。
+                        </p>
+                    </div>
+                </div>
+
+                <!-- 模块4：疯感计划 -->
+                <div class="bg-[#7A5B3E] rounded-[40px] p-8 text-white shadow-xl relative overflow-hidden">
+                    <!-- 背景大图标 -->
+                    <div class="absolute -right-6 -bottom-6 opacity-10 pointer-events-none text-[#FFD180]">
+                        <i data-lucide="flame" class="w-56 h-56 fill-current"></i>
+                    </div>
+                    
+                    <div class="mb-8 relative z-10 border-b border-white/10 pb-4">
+                        <div class="flex items-center gap-2 font-black text-[#FFD180] text-lg mb-1">
+                            <i data-lucide="sparkles" class="w-5 h-5"></i> <span>立刻回血：疯感计划</span>
+                        </div>
+                        <p class="text-[11px] text-[#F2EDE4] opacity-80 font-medium">不需要逻辑，不需要意义，现在就去：</p>
+                    </div>
+                    
+                    <div class="relative z-10">
+                        ${crazyHtml}
+                    </div>
+                </div>
+            `;
+            
+            // 结果页重新实例化图标
+            setTimeout(() => {
+                lucide.createIcons();
+            }, 50);
+        }
+
+        // 初始化
+        lucide.createIcons();
+
+    </script>
+</body>
+</html>
